@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 from functools import partial
+import random
 
 """
 This file will contain the necessary tools to approximate functions using the Franklin system.
@@ -95,6 +96,15 @@ class FranklinFunc:
                 return self.f[i] + ((self.f[i + 1] - self.f[i]) / self.dx) * pcnt * self.dx
         return f
 
+    def eval(self, x):
+        print(f"x = {x}")
+        if x == 1:
+            return self.f[self.N - 1]
+        else:
+            i = math.floor((x / 1) * (2 ** self.J))
+            pcnt = (x - i * self.dx) / (self.dx)
+            return self.f[i] + ((self.f[i + 1] - self.f[i]) / self.dx) * pcnt * self.dx
+
 
 
 
@@ -169,11 +179,49 @@ class FranklinBasis:
         print(f"the coefficients are {a}")
         return f_tot
 
-approximator = FranklinBasis(4)
-f_true = lambda x: math.sin(2*math.pi*x)
-approx = approximator.approximate_function(f_true)
+    def approximate_dist(self, data):
+        C = 0
+        for i in range(self.N):
+            s = 0
+            for d in range(len(data)):
+                s += self.basis[i].eval(data[d]) / len(data)
+            C += s*self.basis[i].integrate()
+        C = C ** (-0.5)
+
+        a = [0.] * self.N  # the coefficient weights for the approximation
+        f_tot = FranklinFunc(self.J)  # the approximation
+        f_tot.mult_function(lambda x: 0)  # initialize to 0
+
+        """ Obtain the weights and add the result to the total"""
+        for i in range(self.N):
+            fi = FranklinFunc(self.J)
+            fi.mult(self.basis[i])
+            fi.mult_const(C)
+            for d in data:
+                a[i] += fi.eval(d)/len(data)
+            fi.mult_const(a[i])
+            f_tot.add(fi)
+        return f_tot
+
+
+
+# approximator = FranklinBasis(4)
+# f_true = lambda x: math.sin(2*math.pi*x)
+# approx = approximator.approximate_function(f_true)
+# approx.plot()
+# plt.show()
+
+approximator = FranklinBasis(5)
+D = 10000
+data = [1.]*D
+for d in range(D):
+    p = random.gauss(0.5, 0.2)
+    data[d] = 0 if p < 0. else (p if p < 1. else 1)
+approx = approximator.approximate_dist(data)
+print(f"l1 integral = {approx.integrate()}")
 approx.plot()
 plt.show()
+
 
 
 
